@@ -42,7 +42,7 @@ jobs:
         working-directory: backend
         run: go build -ldflags "-s -w" -o p-box.exe main.go
 
-      # 7️⃣ 打包 exe 和前端静态资源成 zip
+      # 7️⃣ 打包 exe 和静态资源成 zip
       - name: Create ZIP
         working-directory: backend
         run: powershell Compress-Archive -Path p-box.exe,static\* -DestinationPath p-box-windows.zip
