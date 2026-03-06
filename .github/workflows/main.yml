@@ -18,36 +18,21 @@ jobs:
         with:
           go-version: '1.25'
 
-      # 3. 查找 go.mod 文件位置
-      - name: Find go.mod
-        id: findmod
-        run: |
-          echo "Searching for go.mod..."
-          set MOD_DIR=
-          for /r %%i in (go.mod) do set MOD_DIR=%%~dpi
-          if "%MOD_DIR%"=="" (
-            echo "go.mod not found!"
-            exit /b 1
-          )
-          echo "Found go.mod in %MOD_DIR%"
-          echo "mod_dir=%MOD_DIR%" >> $GITHUB_OUTPUT
+      # 3. 列出仓库结构（可选，调试用）
+      - name: List files
+        run: dir /s
 
-      # 4. 编译 P-BOX
+      # 4. 编译 P-BOX（假设 main.go 在根目录，如果在子目录，请改 cd 路径）
       - name: Build P-BOX
-        run: |
-          cd ${{ steps.findmod.outputs.mod_dir }}
-          go mod tidy
-          go build -ldflags "-s -w" -o P-BOX.exe main.go
+        run: go build -ldflags "-s -w" -o P-BOX.exe main.go
 
-      # 5. 打包 exe 为 zip
+      # 5. 打包成 zip
       - name: Create ZIP
-        run: |
-          cd ${{ steps.findmod.outputs.mod_dir }}
-          powershell Compress-Archive -Path P-BOX.exe -DestinationPath P-BOX-windows.zip
+        run: powershell Compress-Archive -Path P-BOX.exe -DestinationPath P-BOX-windows.zip
 
       # 6. 上传产物
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: P-BOX-windows
-          path: ${{ steps.findmod.outputs.mod_dir }}\P-BOX-windows.zip
+          path: P-BOX-windows.zip
