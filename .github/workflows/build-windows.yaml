@@ -3,8 +3,8 @@ name: Build & Release P-BOX
 # 当 push tag 时触发，例如 v1.0.0
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 jobs:
   build_windows:
