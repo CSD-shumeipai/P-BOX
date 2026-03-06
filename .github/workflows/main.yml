@@ -1,55 +1,64 @@
-name: Build Windows P-BOX with Node Frontend
+name: 构建 Windows 一体化 EXE（前后端合并）
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # 只支持手动触发，避免自动跑
+  # 如果想 push 时自动跑，可加：push: { branches: [main] }
 
 jobs:
-  build_windows:
-    runs-on: windows-latest
+  build:
+    runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 拉取仓库
-      - name: Checkout repository
+      - name: 检出仓库代码
         uses: actions/checkout@v4
 
-      # 2️⃣ 安装 Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v5
+      - name: 设置 Go 环境
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'     # 项目推荐 1.21+，用较新版
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 3️⃣ 安装 Go
-      - name: Setup Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.25'
-
-      # 4️⃣ 构建前端
-      - name: Build Frontend
+      - name: 安装前端依赖
         working-directory: frontend
-        run: |
-          npm install
-          npm run build
+        run: npm ci               # 用 ci 更干净，速度快
 
-      # 5️⃣ 生成 Node.js 前端启动脚本
-      - name: Create Frontend Start Script
-        run: |
-          echo "@echo off" > frontend\start-frontend.cmd
-          echo "npx serve -s dist -l 3000" >> frontend\start-frontend.cmd
+      - name: 构建前端生产包
+        working-directory: frontend
+        run: npm run build
 
-      # 6️⃣ 编译后端 Windows exe
-      - name: Build Backend
+      # 关键：复制 dist 到后端静态目录
+      # 假设项目后端 serve 的路径是 data/webui（最常见，如果不对请手动检查 backend 代码调整）
+      - name: 复制前端构建产物到后端
+        run: |
+          mkdir -p backend/data/webui
+          cp -r frontend/dist/. backend/data/webui/
+
+      - name: 编译 Windows EXE
         working-directory: backend
-        run: go build -ldflags "-s -w" -o p-box.exe main.go
-
-      # 7️⃣ 打包所有产物成 zip
-      - name: Package Windows Zip
+        env:
+          CGO_ENABLED: 0        # 纯 Go 项目，关闭 CGO 更稳定
         run: |
-          powershell Compress-Archive -Path backend\p-box.exe,frontend\dist\*,frontend\start-frontend.cmd -DestinationPath p-box-windows.zip
+          go mod tidy
+          GOOS=windows GOARCH=amd64 go build \
+            -ldflags "-s -w"    # 瘦身，去除调试信息
+            -o p-box.exe .
 
-      # 8️⃣ 上传产物
-      - name: Upload build artifact
+      - name: 打包发布文件
+        run: |
+          mkdir -p release/p-box
+          cp backend/p-box.exe release/p-box/
+          cp -r backend/data release/p-box/     # 包含 webui、configs、logs 等
+          # 如果有其他必要文件（如默认 config.yaml），在这里 cp
+          cd release
+          zip -r ../p-box-windows-amd64.zip p-box/
+
+      - name: 上传构建结果
         uses: actions/upload-artifact@v4
         with:
-          name: P-BOX-windows-node
-          path: p-box-windows.zip
+          name: p-box-windows
+          path: p-box-windows-amd64.zip
+          retention-days: 7
