@@ -32,7 +32,7 @@ jobs:
 
       # 5. 上传产物，供下载
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: P-BOX-windows
           path: P-BOX-windows.zip
