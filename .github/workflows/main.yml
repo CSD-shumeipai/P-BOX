@@ -1,0 +1,38 @@
+name: Build Windows P-BOX
+
+# 手动触发
+on:
+  workflow_dispatch:
+
+jobs:
+  build_windows:
+    runs-on: windows-latest
+
+    steps:
+      # 1. 拉取仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 安装 Go 环境
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25'
+
+      # 3. 编译 Windows 可执行文件
+      - name: Build P-BOX
+        run: |
+          go mod tidy
+          go build -ldflags "-s -w" -o P-BOX.exe main.go
+
+      # 4. 打包 exe 为 zip
+      - name: Create ZIP
+        run: |
+          powershell Compress-Archive -Path P-BOX.exe -DestinationPath P-BOX-windows.zip
+
+      # 5. 上传产物，供下载
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: P-BOX-windows
+          path: P-BOX-windows.zip
